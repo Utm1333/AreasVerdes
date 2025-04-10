@@ -346,6 +346,13 @@
         });
         lay.addTo(map);
         setBounds();
+		document.getElementById("cerrarTexto").addEventListener("click", function () {
+          var textoDiv = document.getElementById("texto");
+          textoDiv.style.animation = "fadeOutUp 0.8s ease forwards";
+          setTimeout(function () {
+            textoDiv.style.display = "none";
+          }, 800);
+        });
         </script>
     </body>
 </html>
