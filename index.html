@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <title>Áreas Verdes Comunales - Municipalidad de Coquimbo</title>
+    
+    <!-- Hojas de estilo -->
+    <link rel="stylesheet" href="css/leaflet.css">
+    <link rel="stylesheet" href="css/qgis2web.css">
+    <link rel="stylesheet" href="css/fontawesome-all.min.css">
+    
+    <style>
+        /* Estilos base */
+        html, body, #map {
+            width: 100%;
+            height: 100%;
+            padding: 0;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+        
+        /* Panel de información */
+        #texto {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            width: auto;
+            min-width: 250px;
+            max-width: 90%;
+            overflow: visible;
+            word-wrap: break-word;
+            white-space: normal;
+            padding: 15px;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            text-align: center;
+            font-size: 16px;
+            z-index: 9999;
+            animation: fadeInUp 0.5s ease-out;
+        }
+        
+        #cerrarTexto {
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #666;
+        }
+        
+        #cerrarTexto:hover {
+            color: #000;
+        }
+        
+        #logo {
+            width: 80px;
+            height: auto;
+            max-width: 100%;
+        }
+        
+        /* Control de capas mejorado */
+        .leaflet-control-layers {
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            padding: 10px;
+        }
+        
+        .leaflet-control-layers-expanded {
+            max-height: 300px; /* Limitar la altura si hay muchas capas */
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding-right: 5px; /* Añadir espacio para la barra de desplazamiento */
+        }
+        
+        .leaflet-control-layers label img {
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+
+        /* Animaciones */
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        @keyframes fadeOutUp {
+            0% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-20px);
+            }
+        }
+        
+        /* Media queries para responsividad */
+        @media (max-width: 768px) {
+            #texto {
+                left: 10px;
+                bottom: 10px;
+                min-width: 200px;
+                font-size: 14px;
+                padding: 12px;
+            }
+            
+            #logo {
+                width: 60px;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            #texto {
+                min-width: 160px;
+                font-size: 12px;
+                padding: 10px;
+                left: 5px;
+                bottom: 5px;
+            }
+            
+            #logo {
+                width: 50px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="map"></div>
+    
+    <!-- Panel de información -->
+    <div id="texto">
+        <button id="cerrarTexto" aria-label="Cerrar panel">✕</button>
+        <div class="logo-container">
+            <a href="http://mapas.municoquimbo.cl/" target="_blank" rel="noopener noreferrer">
+                <img id="logo" src="images/logo.png" alt="Logo Municipalidad de Coquimbo">
+            </a>
+        </div>
+        <div class="text-content">
+            <strong>
+                <span style="font-size: 1.1em;">Áreas Verdes Comunales</span><br>
+                Ilustre Municipalidad de Coquimbo
+            </strong>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="js/leaflet.js"></script>
+    <script src="data/AreasVerdes_BNUP_2.js"></script>
+    
+    <script>
+        // Configuración inicial del mapa
+        var map = L.map('map', {
+            zoomControl: true,
+            maxZoom: 28,
+            minZoom: 1
+        }).fitBounds([[-30.005829207920033, -71.37108257659396], [-29.930751697593884, -71.23485612985186]]);
+        
+        // Capas base
+        var layer_OpenStreetMap = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        var layer_GoogleMaps = L.tileLayer('https://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}', {
+            attribution: 'Map data &copy; <a href="https://www.google.com/maps">Google Maps</a>',
+            maxZoom: 28
+        });
+
+        var layer_GoogleSatelite = L.tileLayer('https://www.google.cn/maps/vt?lyrs=s@189&gl=cn&x={x}&y={y}&z={z}', {
+            attribution: 'Map data &copy; <a href="https://www.google.com/maps">Google Satellite</a>',
+            maxZoom: 28
+        });
+        
+        // Estilo de las áreas verdes
+        function style_AreasVerdes(feature) {
+            return {
+                color: 'rgba(35, 35, 35, 1.0)', // Color de borde
+                weight: 1,
+                dashArray: '', // Sin guiones
+                fillColor: 'rgba(58, 250, 83, 0.7)', // Color de relleno original
+                fillOpacity: 0.7 // Opacidad del relleno
+            };
+        }
+
+        // Capa de áreas verdes
+        var layer_AreasVerdes = L.geoJson(json_AreasVerdes_BNUP_2, {
+            style: style_AreasVerdes,
+            onEachFeature: function (feature, layer) {
+                var popupContent = '<table>' +
+                    '<tr><th>Área</th><td>' + feature.properties.Area + '</td></tr>' +
+                    '<tr><th>Perímetro</th><td>' + feature.properties.Perimetro + '</td></tr>' +
+                    '</table>';
+                layer.bindPopup(popupContent);
+            }
+        }).addTo(map);
+        
+        // Control de capas
+        var baseMaps = {
+            "OpenStreetMap": layer_OpenStreetMap,
+            "Google Maps": layer_GoogleMaps,
+            "Google Satélite": layer_GoogleSatelite
+        };
+
+        var overlayMaps = {
+            "Áreas Verdes": layer_AreasVerdes
+        };
+
+        L.control.layers(baseMaps, overlayMaps, { collapsed: false }).addTo(map);
+    </script>
+</body>
+</html>
